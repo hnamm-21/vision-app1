@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>تحليل الصور — Azure Computer Vision</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .row { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .row { grid-template-columns: 1fr 1fr; } }
+    pre { background: #f7f7f7; padding: 12px; border-radius: 10px; overflow: auto; }
+    button { padding: 10px 16px; border-radius: 10px; border: 1px solid #ccc; cursor: pointer; }
+    button:disabled { opacity: 0.7; cursor: not-allowed; }
+    .hint { color: #555; font-size: 0.9rem; }
+    img { max-width: 100%; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <h1>تحليل الصور باستخدام Azure Computer Vision</h1>
+  <p class="hint">اختر صورة ثم اضغط "تحليل". النتيجة (JSON) ستظهر إلى اليمين.</p>
+
+  <div class="row">
+    <div class="card">
+      <form id="form">
+        <input type="file" id="file" name="image" accept="image/*" required />
+        <div style="margin-top:12px;">
+          <button id="btn" type="submit">تحليل</button>
+        </div>
+      </form>
+      <div id="previewWrap" style="margin-top:16px; display:none;">
+        <h3>معاينة الصورة</h3>
+        <img id="preview" alt="preview" />
+      </div>
+      <p class="hint">الأنواع المدعومة: JPG, PNG, BMP, GIF, WEBP</p>
+    </div>
+
+    <div class="card">
+      <h3>النتيجة (JSON)</h3>
+      <pre id="out">{}</pre>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("form");
+    const fileInput = document.getElementById("file");
+    const out = document.getElementById("out");
+    const btn = document.getElementById("btn");
+    const previewWrap = document.getElementById("previewWrap");
+    const preview = document.getElementById("preview");
+
+    fileInput.addEventListener("change", () => {
+      const f = fileInput.files?.[0];
+      if (f) {
+        const url = URL.createObjectURL(f);
+        preview.src = url;
+        previewWrap.style.display = "block";
+      } else {
+        previewWrap.style.display = "none";
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = fileInput.files?.[0];
+      if (!f) return;
+
+      const fd = new FormData();
+      fd.append("image", f);
+
+      out.textContent = "جار التحليل...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch("/analyze", { method: "POST", body: fd });
+        const txt = await res.text();
+        // نحاول JSON.parse، ولو فشل نعرض النص الخام (مفيد للديبَغ)
+        try {
+          const data = JSON.parse(txt);
+          out.textContent = JSON.stringify(data, null, 2);
+        } catch {
+          out.textContent = txt;
+        }
+      } catch (err) {
+        out.textContent = JSON.stringify({ error: String(err) }, null, 2);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
